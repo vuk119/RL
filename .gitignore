@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # Output folder
-out/
+DDQN/out/
