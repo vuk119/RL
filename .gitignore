@@ -128,5 +128,15 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Output folder
+# DDQN redundant files
 DDQN/out/
+DDQN/runs/
+DDQN/__pycache__/
+
+# DP redundant files
+DP/saved_variables/
+
+# Easy21 redundant files
+Easy21/__pycache__
+Easy21/out
+Easy21/.ipynb_checkpoints
