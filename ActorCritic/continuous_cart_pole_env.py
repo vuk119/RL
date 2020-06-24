@@ -1,12 +1,10 @@
 """
 
-
 THIS IS NOT MY WORK.
 
 CREDITS TO:
 
 https://gist.github.com/iandanforth/e3ffb67cf3623153e968f2afdfb01dc8
-
 
 """
 
