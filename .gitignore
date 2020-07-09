@@ -144,3 +144,5 @@ Easy21/.ipynb_checkpoints
 # ActorCritic redundant files
 ActorCritic/out
 ActorCritic/runs
+
+runs/
