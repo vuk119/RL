@@ -98,8 +98,9 @@ class ActorCritic(Model):
 
     def actor_update(self, advantages, actions, mus):
         self.actor_optimizer.zero_grad()
-        actor_loss = advantages * self.actor_loss(actions, mus)
-        actor_loss.backward()
+        actor_loss = self.actor_loss(actions, mus)
+        gradient_term = advantages * actor_loss
+        gradient_term.backward()
         self.actor_optimizer.step()
 
         return actor_loss.item()

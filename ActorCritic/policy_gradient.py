@@ -68,6 +68,15 @@ class PolicyGradient(Model):
         self.policy_net.load_state_dict(checkpoint['policy'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
 
+    def actor_update(self, Q, action, mu):
+        self.actor_optimizer.zero_grad()
+        actor_loss = self.actor_loss(action, mu)
+        gradient_term = Q * actor_loss
+        gradient_term.backward()
+        self.actor_optimizer.step()
+
+        return actor_loss.item()
+
     def update(self, sample, prepare_state=None):
         """
         prepare_state is a function that does feature engineering on the plain state
@@ -85,11 +94,8 @@ class PolicyGradient(Model):
 
             mu = self.policy_net(state)
 
-            self.optimizer.zero_grad()
-            loss = Q * self.loss(action, mu)
-            loss.backward()
-            self.optimizer.step()
-            episode_running_loss.append(loss.item())
+            loss = self.actor_update(Q, action, mu)
+            episode_running_loss.append(loss)
 
         return episode_running_loss
 
