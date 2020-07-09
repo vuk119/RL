@@ -12,6 +12,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
+from model import Model
 from actor import Actor
 
 if False:
@@ -29,30 +30,15 @@ if False:
     Actor
 
 
-class PolicyGradient:
+class PolicyGradient(Model):
 
-    def __init__(self, observation_space_size, action_space_size, name=None, env_name=None, model_config=None, play_mode=False):
+    def __init__(self, observation_space_size, action_space_size, name=None,
+                 env_name=None, model_config=None, play_mode=False):
 
-        self.observation_space_size = observation_space_size
-        self.action_space_size = action_space_size
-        self.model_config = model_config
-
-        self.build_model()
-        self.writer = SummaryWriter()
-
-        if play_mode is False:
-            if name is None:
-                self.name = "Unnamed"
-            else:
-                self.name = name
-            if env_name is None:
-                self.env_name = "Unnamed Env"
-            else:
-                self.env_name = env_name
-            self.dir = self.name + '-' + self.env_name + '-' + str(round(time.time()))
-            self.dir = os.path.join('./out', self.dir)
-            if not os.path.exists(self.dir):
-                os.makedirs(self.dir)
+        if name is None:
+            name = "Unnamed-PolicyGradient"
+        super(PolicyGradient, self).__init__(observation_space_size, action_space_size,
+                                             name, env_name, model_config, play_mode)
 
     def build_model(self):
 
@@ -66,28 +52,6 @@ class PolicyGradient:
         else:
             pass
 
-    def get_epsilon_default(self):
-        return 0.01
-
-    def get_action(self, state, sigma, prepare_state=None):
-        """
-        prepare_state is a function that does feature engineering on the plain state
-        """
-        if prepare_state is not None:
-            state = prepare_state(state)
-
-        state = torch.tensor(state, dtype=torch.float32)
-        with torch.no_grad():
-            mu = self.policy_net(state).item()
-        if sigma != 0:
-            action = np.random.normal(mu, sigma, 1)[0]
-        else:
-            action = mu
-        action = max(action, -1)
-        action = min(action, 1)
-
-        return action
-
     def save_checkpoint(self, n=0, filepath=None):
         """
         n - number of epoch / episode or whatever is used for enumeration
@@ -96,46 +60,33 @@ class PolicyGradient:
         # TO DO: ADD OTHER RELEVANT PARAMETERS
         checkpoint = {'policy': self.policy_net.state_dict(),
                       'optimizer': self.optimizer.state_dict()}
-        if filepath is None:
-            path = os.path.join(self.dir, 'checkpoints')
-            if not os.path.exists(path):
-                os.makedirs(path)
-            filepath = os.path.join(path, 'n' + str(n))
-        torch.save(checkpoint, filepath)
+        super(PolicyGradient, self).save_checkpoint(n, filepath, checkpoint)
 
     def load_checkpoint(self, filepath):
         # TO DO: ADD OTHER RELEVANT parameters
         checkpoint = torch.load(filepath)
-        self.policy_net.load_state_dict(checkpoint['policy_net'])
+        self.policy_net.load_state_dict(checkpoint['policy'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
 
-    def process_episode_history(self, history):
-        """
-        input: [[state, action, reward] over steps]
-        output: [[state, action, Q[state, action]] over steps]
-        """
-
-        for i in range(len(history) - 2, -1, -1):
-            history[i][2] += history[i + 1][2]
-
-        return history
-
-    def update(self, history, prepare_state=None):
+    def update(self, sample, prepare_state=None):
         """
         prepare_state is a function that does feature engineering on the plain state
         """
 
-        history = self.process_episode_history(history)
+        sample = self.monte_carlo_returns(sample)
         episode_running_loss = []
 
-        for state, action, Q in history:
+        for state, action, Q in sample:
             if prepare_state is not None:
                 state = prepare_state(state)
 
-            mu = self.policy_net(torch.tensor(state, dtype=torch.float32))
+            state = torch.tensor(state, dtype=torch.float32)
+            action = torch.tensor(action, dtype=torch.float32)
+
+            mu = self.policy_net(state)
 
             self.optimizer.zero_grad()
-            loss = Q * self.loss(torch.tensor(action, dtype=torch.float32), mu)
+            loss = Q * self.loss(action, mu)
             loss.backward()
             self.optimizer.step()
             episode_running_loss.append(loss.item())
@@ -154,7 +105,7 @@ if True:
     print(env.action_space.low, env.action_space.high)
     model = PolicyGradient(4, 1)
 
-    n_episode = 1000
+    n_episode = 5
     sigma_max = 1
     sigma_min = 0.05
     rewards = []
@@ -191,4 +142,6 @@ if True:
             if total_reward > 300:
                 break
         rewards.append(total_reward)
-        model.update()
+        model.update(history)
+
+    print("DONE")
