@@ -140,3 +140,7 @@ DP/saved_variables/
 Easy21/__pycache__
 Easy21/out
 Easy21/.ipynb_checkpoints
+
+# ActorCritic redundant files
+ActorCritic/out
+ActorCritic/runs
